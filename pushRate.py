@@ -2,21 +2,26 @@
 import sys
 from yahoo_finance_api2 import share
 from yahoo_finance_api2.exceptions import YahooFinanceError
+import schedule
+from time import sleep
 import pandas as pd
 import datetime
 import requests
 
-def main():
-    # 始値を取得
-    open_stock_rate = get_open_stock('8783')
-    current_stock_rate = get_current_stock('8783')
-    if pd.isna(current_stock_rate):
-        return
+def task():
+    # 15時まで1分毎に繰り返す
+    while datetime.datetime.now().hour < 15:
+        # 始値を取得
+        open_stock_rate = get_open_stock('8783')
+        current_stock_rate = get_current_stock('8783')
+        if pd.isna(current_stock_rate):
+            return
 
-    message = culc_profit_and_loss_ratio(open_stock_rate, current_stock_rate, 4)
-    if message != "":
-        token = get_token()
-        send_line_notify(message, token)
+        message = culc_profit_and_loss_ratio(open_stock_rate, current_stock_rate, 4)
+        if message != "":
+            token = get_token()
+            send_line_notify(message, token)
+        sleep(60)
 
 # 指定の日本株証券コードで株価を取得し始値を返す
 def get_open_stock(code):
@@ -46,11 +51,7 @@ def get_current_stock(code):
     except YahooFinanceError as e:
         print(e.message)
         sys.exit(1)
- 
-    # df = pd.DataFrame(symbol_data)
-    #日本時間へ変換
-    # df["datetime_JST"] = pd.to_datetime(df.timestamp, unit="ms") + datetime.timedelta(hours=9)
-    # return df.head()   
+    
     high = symbol_data["high"]
     return high[len(high) - 1]
 
@@ -83,6 +84,11 @@ def send_line_notify(notification_message, line_notify_token):
     data = {'message': notification_message}
     requests.post(line_notify_api, headers = headers, data = data)
 
+# 毎日9時にtaskを実行
+schedule.every().day.at("09:00").do(task)
+
 # 直接実行のみ許可
 if __name__ == "__main__":
-    main()
+    while True:
+        schedule.run_pending()
+        sleep(60)

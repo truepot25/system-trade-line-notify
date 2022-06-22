@@ -4,6 +4,7 @@
 ```
 pip install yahoo_finance_api2
 pip install requests
+pip install schedule
 ```
 
 # Usage
